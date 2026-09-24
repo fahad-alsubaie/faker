@@ -1,0 +1,28 @@
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    restart: unless-stopped
+    command:
+      - serve
+      - --http=0.0.0.0:8090
+    environment:
+      - PUID=1000
+      - PGID=1000
+      # created automatically on first start — change these!
+      - PB_SUPERUSER_EMAIL=admin@faker.local
+      - PB_SUPERUSER_PASSWORD=CHANGE-ME-strong-password
+    ports:
+      - "8090:8090"
+    volumes:
+      - pocketbase_data:/pb_data
+      - pocketbase_hooks:/pb_hooks
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8090/api/health || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  pocketbase_data:
+  pocketbase_hooks:

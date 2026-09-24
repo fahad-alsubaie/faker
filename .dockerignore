@@ -1,0 +1,9 @@
+node_modules
+dist
+.astro
+.git
+.env.local
+logs.json
+logs.jsonl
+pb/.prod-superuser-pass
+_convex_backup
