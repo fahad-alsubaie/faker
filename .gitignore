@@ -5,3 +5,4 @@ dist/
 logs.json
 logs.jsonl
 pb/.prod-superuser-pass
+probe*.log

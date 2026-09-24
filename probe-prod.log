@@ -1,5 +1,0 @@
-stream status: 200 text/event-stream
-PB_CONNECT after 1 ms
-subscribe POST: 204 
-record event arrived after 118 ms
-update ok: 52eylvj0
