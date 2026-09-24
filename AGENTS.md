@@ -32,7 +32,9 @@ node pb/smoke.mjs <url>                        # rule regression check
   Local superuser: `admin@faker.local` / `faker-dev-admin-2026` (dev only).
 - `PUBLIC_POCKETBASE_URL` is **baked at build time** (Astro static output). `.env` points
   at local PB; `.env.local` overrides for production (currently
-  `http://pb.169.58.224.56.sslip.io` — the live VPS instance). See `DEPLOY.md`.
+  `http://pb.169.58.224.56.sslip.io` — the live VPS instance). Production: repo
+  https://github.com/fahad-alsubaie/faker → Coolify `faker-web` (Dockerfile + nginx) at
+  http://faker.169.58.224.56.sslip.io. See `DEPLOY.md`.
 - Multiple unrelated Astro dev servers may run on this machine. Before testing, verify
   port 4321 actually serves THIS project — kill stray `node ... astro dev` processes if
   another project answers. Start with `npx astro dev --host` if you need `127.0.0.1:4321`
