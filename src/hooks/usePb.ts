@@ -38,9 +38,23 @@ async function subscribeWithRefetch(
   collection: string,
   filter: string,
   refetch: () => void,
+  cancelled: () => boolean,
 ): Promise<Unsubscribe> {
-  const unsub = await pb.collection(collection).subscribe(filter, () => refetch());
-  return unsub;
+  // a failed registration (e.g. token race at mount) must not leave the hook
+  // polling-only — retry until the subscription sticks
+  for (;;) {
+    try {
+      const unsub = await pb.collection(collection).subscribe(filter, () => refetch());
+      if (cancelled()) {
+        unsub();
+        return () => {};
+      }
+      return unsub;
+    } catch {
+      if (cancelled()) return () => {};
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
 }
 
 export function usePbRecord<T extends { id: string }>(
@@ -79,13 +93,9 @@ export function usePbRecord<T extends { id: string }>(
     const setup = async () => {
       await refetch();
       if (cancelled || !recordId) return;
-      try {
-        unsub = await subscribeWithRefetch(collection, recordId, () => {
-          if (!cancelled) refetch();
-        });
-      } catch {
-        // SSE unavailable -> polling fallback keeps the game playable
-      }
+      unsub = await subscribeWithRefetch(collection, recordId, () => {
+        if (!cancelled) refetch();
+      }, () => cancelled);
       timer = setInterval(() => {
         if (!cancelled) refetch();
       }, 20000);
@@ -147,13 +157,9 @@ export function usePbList<T extends { id: string }>(
     const setup = async () => {
       await refetch();
       if (cancelled || !filter) return;
-      try {
-        unsub = await subscribeWithRefetch(collection, filter, () => {
-          if (!cancelled) refetch();
-        });
-      } catch {
-        // SSE unavailable -> polling fallback keeps the game playable
-      }
+      unsub = await subscribeWithRefetch(collection, filter, () => {
+        if (!cancelled) refetch();
+      }, () => cancelled);
       timer = setInterval(() => {
         if (!cancelled) refetch();
       }, 20000);
