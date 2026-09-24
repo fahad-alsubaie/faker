@@ -34,17 +34,46 @@ export function useAuthGate() {
 
 type Unsubscribe = () => void;
 
+// Proxies can kill idle SSE connections without a FIN — EventSource stays "open"
+// but no events ever arrive again (and the SDK never reconnects on its own).
+// Track the last SSE event globally and recycle the connection on silence.
+let lastSseEventAt = Date.now();
+let recyclerStarted = false;
+
+function touchSse() {
+  lastSseEventAt = Date.now();
+}
+
+function ensureSseRecycler() {
+  if (recyclerStarted || typeof window === "undefined") return;
+  recyclerStarted = true;
+  window.setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    if (!pb.realtime.isConnected) return;
+    if (Date.now() - lastSseEventAt < 25000) return;
+    pb.realtime.disconnect();
+    pb.realtime.connect().catch(() => {});
+    touchSse();
+  }, 10000);
+}
+
 async function subscribeWithRefetch(
   collection: string,
   filter: string,
   refetch: () => void,
   cancelled: () => boolean,
 ): Promise<Unsubscribe> {
+  ensureSseRecycler();
   // a failed registration (e.g. token race at mount) must not leave the hook
   // polling-only — retry until the subscription sticks
   for (;;) {
     try {
-      const unsub = await pb.collection(collection).subscribe(filter, () => refetch());
+      const unsub = await pb
+        .collection(collection)
+        .subscribe(filter, () => {
+          touchSse();
+          refetch();
+        });
       if (cancelled()) {
         unsub();
         return () => {};
@@ -98,7 +127,7 @@ export function usePbRecord<T extends { id: string }>(
       }, () => cancelled);
       timer = setInterval(() => {
         if (!cancelled) refetch();
-      }, 20000);
+      }, 10000);
     };
     setup();
 
@@ -162,7 +191,7 @@ export function usePbList<T extends { id: string }>(
       }, () => cancelled);
       timer = setInterval(() => {
         if (!cancelled) refetch();
-      }, 20000);
+      }, 10000);
     };
     setup();
 
